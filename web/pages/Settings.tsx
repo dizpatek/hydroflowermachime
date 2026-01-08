@@ -80,8 +80,8 @@ export default function Settings() {
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
                             className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-bold text-sm transition-all ${activeTab === tab.id
-                                    ? 'bg-emerald-500 text-black'
-                                    : 'text-slate-400 hover:text-white'
+                                ? 'bg-emerald-500 text-black'
+                                : 'text-slate-400 hover:text-white'
                                 }`}
                         >
                             <tab.icon className="w-5 h-5" />
@@ -168,7 +168,7 @@ export default function Settings() {
                                     placeholder="http://192.168.1.100:81/stream"
                                     className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
                                 />
-                                <p className="text-xs text-slate-500 mt-2">ESP32-CAM RTSP veya HTTP stream adresi</p>
+                                <p className="text-xs text-slate-500 mt-2">ESP32-CAM RTSP/HTTP adresi veya test için 'SIMULATION' yazın</p>
                             </div>
                         </div>
 

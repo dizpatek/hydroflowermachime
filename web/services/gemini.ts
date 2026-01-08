@@ -14,13 +14,28 @@ export interface HealthAnalysis {
 
 export async function analyzeHealthFromCamera(cameraUrl: string): Promise<HealthAnalysis> {
     try {
-        // Capture image from camera
-        const imageResponse = await axios.get(cameraUrl, { responseType: 'arraybuffer' });
-        const imageBase64 = Buffer.from(imageResponse.data).toString('base64');
+        let analysis: HealthAnalysis;
 
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+        if (cameraUrl === 'SIMULATION') {
+            // Mock Analysis for Testing
+            console.log('Running simulated health check...');
+            await new Promise(resolve => setTimeout(resolve, 2000)); // Fake delay
 
-        const prompt = `Analyze this hydroponic plant image and provide a detailed health assessment.
+            analysis = {
+                healthScore: 95,
+                analysis: "Plant appears vibrant and healthy with strong turgor pressure. Leaf color is a deep, healthy green indicating optimal nitrogen levels. No signs of pests or bacterial infection.",
+                issues: [],
+                recommendations: ["Continue current nutrient schedule", "Monitor pH levels"],
+                severity: "normal"
+            };
+        } else {
+            // Capture image from camera
+            const imageResponse = await axios.get(cameraUrl, { responseType: 'arraybuffer' });
+            const imageBase64 = Buffer.from(imageResponse.data).toString('base64');
+
+            const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+
+            const prompt = `Analyze this hydroponic plant image and provide a detailed health assessment.
 
 Focus on:
 1. Leaf color and texture (yellowing, browning, spots, discoloration)
@@ -38,26 +53,27 @@ Provide your response in this exact JSON format:
   "severity": "<normal|warning|critical>"
 }`;
 
-        const result = await model.generateContent([
-            prompt,
-            {
-                inlineData: {
-                    data: imageBase64,
-                    mimeType: 'image/jpeg'
+            const result = await model.generateContent([
+                prompt,
+                {
+                    inlineData: {
+                        data: imageBase64,
+                        mimeType: 'image/jpeg'
+                    }
                 }
+            ]);
+
+            const response = await result.response;
+            const text = response.text();
+
+            // Parse JSON from response
+            const jsonMatch = text.match(/\{[\s\S]*\}/);
+            if (!jsonMatch) {
+                throw new Error('Invalid response format from Gemini');
             }
-        ]);
 
-        const response = await result.response;
-        const text = response.text();
-
-        // Parse JSON from response
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) {
-            throw new Error('Invalid response format from Gemini');
+            analysis = JSON.parse(jsonMatch[0]);
         }
-
-        const analysis: HealthAnalysis = JSON.parse(jsonMatch[0]);
 
         // Save to database
         await prisma.healthCheck.create({

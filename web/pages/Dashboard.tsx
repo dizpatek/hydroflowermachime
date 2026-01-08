@@ -125,8 +125,8 @@ export default function Dashboard() {
                             whileTap={{ scale: 0.95 }}
                             onClick={() => handleAutopilotToggle(autopilotActive ? 'stop' : 'start')}
                             className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm transition-all ${autopilotActive
-                                    ? 'bg-emerald-500 text-black shadow-lg shadow-emerald-500/20'
-                                    : 'bg-white/5 border border-white/10 text-slate-400 hover:text-white'
+                                ? 'bg-emerald-500 text-black shadow-lg shadow-emerald-500/20'
+                                : 'bg-white/5 border border-white/10 text-slate-400 hover:text-white'
                                 }`}
                         >
                             {autopilotActive ? <PauseCircle className="w-5 h-5" /> : <PlayCircle className="w-5 h-5" />}
@@ -192,12 +192,29 @@ export default function Dashboard() {
                     </div>
 
                     {/* Health Check Results */}
-                    {healthCheck && (
-                        <div className="bg-white/5 border border-white/10 rounded-3xl p-6">
-                            <h3 className="font-bold text-white mb-4 flex items-center gap-2">
+                    <div className="bg-white/5 border border-white/10 rounded-3xl p-6">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="font-bold text-white flex items-center gap-2">
                                 <CheckCircle className="w-5 h-5 text-emerald-400" />
                                 Son AI Sağlık Kontrolü
                             </h3>
+                            <button
+                                onClick={async () => {
+                                    try {
+                                        const res = await axios.post(`${API_URL}/health/analyze`);
+                                        setHealthCheck(res.data);
+                                    } catch (err) {
+                                        alert('Analiz başlatılamadı. Kamera ayarlarını kontrol edin.');
+                                    }
+                                }}
+                                className="text-xs flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+                            >
+                                <Camera className="w-3 h-3" />
+                                Analiz Et
+                            </button>
+                        </div>
+
+                        {healthCheck ? (
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div className="bg-white/5 rounded-2xl p-4">
                                     <div className="text-4xl font-bold text-emerald-400">{healthCheck.healthScore}/100</div>
@@ -207,8 +224,12 @@ export default function Dashboard() {
                                     <p className="text-sm text-slate-300">{healthCheck.analysis}</p>
                                 </div>
                             </div>
-                        </div>
-                    )}
+                        ) : (
+                            <div className="text-center py-6 text-slate-500 text-sm">
+                                Henüz sağlık kontrolü yapılmadı.
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {/* Right Column: Camera & Logs */}
@@ -255,9 +276,9 @@ export default function Dashboard() {
                                 <div key={log.id} className="p-3 rounded-xl bg-white/5 border border-white/5">
                                     <div className="flex justify-between items-center mb-1">
                                         <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${log.level === 'CRITICAL' ? 'bg-red-500/20 text-red-400' :
-                                                log.level === 'WARNING' ? 'bg-yellow-500/20 text-yellow-400' :
-                                                    log.level === 'AI_DECISION' ? 'bg-blue-500/20 text-blue-400' :
-                                                        'bg-slate-500/20 text-slate-400'
+                                            log.level === 'WARNING' ? 'bg-yellow-500/20 text-yellow-400' :
+                                                log.level === 'AI_DECISION' ? 'bg-blue-500/20 text-blue-400' :
+                                                    'bg-slate-500/20 text-slate-400'
                                             }`}>
                                             {log.level}
                                         </span>

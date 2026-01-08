@@ -200,6 +200,26 @@ app.post('/api/autopilot/stop', async (req, res) => {
 });
 
 // ===== HEALTH CHECKS =====
+app.post('/api/health/analyze', async (req, res) => {
+    try {
+        const config = await prisma.eSP32Config.findFirst();
+        if (!config || !config.cameraUrl) {
+            return res.status(400).json({ error: 'Camera URL not configured' });
+        }
+
+        // Import dynamically to avoid circular dependency issues if any
+        const { analyzeHealthFromCamera } = await import('./services/gemini');
+
+        console.log('Triggering manual health check...');
+        const analysis = await analyzeHealthFromCamera(config.cameraUrl);
+
+        res.json(analysis);
+    } catch (error) {
+        console.error('Manual health check failed:', error);
+        res.status(500).json({ error: 'Health analysis failed' });
+    }
+});
+
 app.get('/api/health/latest', async (req, res) => {
     try {
         const check = await prisma.healthCheck.findFirst({
