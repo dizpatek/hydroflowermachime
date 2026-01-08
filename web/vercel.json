@@ -9,8 +9,5 @@
             "source": "/(.*)",
             "destination": "/"
         }
-    ],
-    "functions": {
-        "api/index.ts": {}
-    }
+    ]
 }
