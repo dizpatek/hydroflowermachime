@@ -22,14 +22,17 @@ app.use(express.json());
 app.post('/api/auth/login', async (req, res) => {
     try {
         const { username, password } = req.body;
+        console.log(`Login attempt for user: ${username}`);
 
         const user = await prisma.user.findUnique({ where: { username } });
         if (!user) {
+            console.log(`User not found: ${username}`);
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
         const isValid = await comparePassword(password, user.password);
         if (!isValid) {
+            console.log(`Invalid password for user: ${username}`);
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
@@ -39,9 +42,26 @@ app.post('/api/auth/login', async (req, res) => {
             role: user.role
         });
 
+        console.log(`Login successful for user: ${username}`);
         res.json({ token, user: { id: user.id, username: user.username, role: user.role } });
     } catch (error) {
-        res.status(500).json({ error: 'Login failed' });
+        console.error('Login error:', error);
+        res.status(500).json({ error: 'Login failed', details: error instanceof Error ? error.message : String(error) });
+    }
+});
+
+// ===== DB HEALTH CHECK =====
+app.get('/api/health/db', async (req, res) => {
+    try {
+        await prisma.$queryRaw`SELECT 1`;
+        res.json({ status: 'connected', database: 'ok' });
+    } catch (error) {
+        console.error('DB Health check failed:', error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Database connection failed',
+            details: error instanceof Error ? error.message : String(error)
+        });
     }
 });
 

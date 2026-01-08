@@ -24,6 +24,7 @@ export default function Dashboard() {
     const [modalAction, setModalAction] = useState<'start' | 'stop'>('start');
     const [password, setPassword] = useState('');
     const [cameraConnected, setCameraConnected] = useState(false);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         // Connect WebSocket
@@ -46,6 +47,7 @@ export default function Dashboard() {
 
     const loadData = async () => {
         try {
+            setLoading(true);
             const [historyRes, cycleRes, healthRes, logsRes] = await Promise.all([
                 axios.get(`${API_URL}/sensors/history?limit=50`),
                 axios.get(`${API_URL}/cycle/current`),
@@ -53,15 +55,34 @@ export default function Dashboard() {
                 axios.get(`${API_URL}/logs?limit=20`)
             ]);
 
-            setSensorData(historyRes.data);
-            if (historyRes.data.length > 0) {
+            setSensorData(historyRes.data || []);
+            if (historyRes.data && historyRes.data.length > 0) {
                 setCurrentData(historyRes.data[historyRes.data.length - 1]);
+            } else {
+                // Set default data if no history exists
+                setCurrentData({
+                    ph: 7.0,
+                    tds: 0,
+                    waterTemp: 22.0,
+                    humidity: 50.0,
+                    timestamp: new Date().toISOString()
+                });
             }
             setAutopilotActive(cycleRes.data?.autopilotActive || false);
             setHealthCheck(healthRes.data);
-            setLogs(logsRes.data);
+            setLogs(logsRes.data || []);
         } catch (error) {
             console.error('Failed to load data:', error);
+            // Even on error, set default data to show the UI
+            setCurrentData({
+                ph: 0,
+                tds: 0,
+                waterTemp: 0,
+                humidity: 0,
+                timestamp: new Date().toISOString()
+            });
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -87,10 +108,13 @@ export default function Dashboard() {
         navigate('/');
     };
 
-    if (!currentData) {
+    if (loading && !currentData) {
         return (
             <div className="min-h-screen bg-[#0a0f18] flex items-center justify-center">
-                <div className="text-emerald-400 font-mono">Yükleniyor...</div>
+                <div className="flex flex-col items-center gap-4">
+                    <div className="w-12 h-12 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin" />
+                    <div className="text-emerald-400 font-mono animate-pulse">Sistem Yükleniyor...</div>
+                </div>
             </div>
         );
     }
