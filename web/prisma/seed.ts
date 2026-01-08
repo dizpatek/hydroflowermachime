@@ -25,8 +25,8 @@ async function main() {
         update: {},
         create: {
             id: 'default',
-            wifiSSID: 'YourWiFiSSID',
-            wifiPassword: 'YourWiFiPassword',
+            wifiSSID: 'Murphy',
+            wifiPassword: 'sifreyok',
             mqttBroker: 'broker.hivemq.com',
             mqttPort: 1883,
             sensorPins: JSON.stringify({ ph: 34, tds: 35, temp: 32, moisture: 33 }),

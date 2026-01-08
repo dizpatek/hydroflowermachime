@@ -4,6 +4,8 @@ import { motion } from 'framer-motion';
 import { Cpu, Lock, User, AlertCircle } from 'lucide-react';
 import axios from 'axios';
 
+import { API_BASE_URL } from '../services/config';
+
 export default function Login() {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
@@ -17,7 +19,7 @@ export default function Login() {
         setLoading(true);
 
         try {
-            const response = await axios.post('http://localhost:3001/api/auth/login', {
+            const response = await axios.post(`${API_BASE_URL}/api/auth/login`, {
                 username,
                 password
             });

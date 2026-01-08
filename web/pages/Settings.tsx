@@ -4,7 +4,8 @@ import { motion } from 'framer-motion';
 import { ArrowLeft, Wifi, Server, Gauge, Camera, Save, Shield } from 'lucide-react';
 import axios from 'axios';
 
-const API_URL = 'http://localhost:3001/api';
+import { API_BASE_URL } from '../services/config';
+const API_URL = `${API_BASE_URL}/api`;
 
 export default function Settings() {
     const navigate = useNavigate();

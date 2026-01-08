@@ -1,12 +1,10 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import { Server } from 'socket.io';
 import { createServer } from 'http';
 import { prisma } from './lib/db';
 import { generateToken, comparePassword } from './lib/auth';
-import dotenv from 'dotenv';
-
-dotenv.config();
 
 const app = express();
 const httpServer = createServer(app);
@@ -296,9 +294,13 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3001;
-httpServer.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
-    console.log(`📡 WebSocket server ready`);
-});
+
+if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+    httpServer.listen(PORT, () => {
+        console.log(`🚀 Server running on port ${PORT}`);
+        console.log(`📡 WebSocket server ready`);
+    });
+}
 
 export { app, io };
+export default app;

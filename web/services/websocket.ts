@@ -1,11 +1,12 @@
 import { io, Socket } from 'socket.io-client';
+import { WS_URL } from './config';
 
 class WebSocketService {
     private socket: Socket | null = null;
     private reconnectAttempts = 0;
     private maxReconnectAttempts = 5;
 
-    connect(url: string = 'http://localhost:3001') {
+    connect(url: string = WS_URL) {
         if (this.socket?.connected) {
             return this.socket;
         }
