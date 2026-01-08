@@ -1,0 +1,80 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+
+model User {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  password  String
+  role      String   @default("admin")
+  createdAt DateTime @default(now())
+}
+
+model ESP32Config {
+  id            String   @id @default(cuid())
+  wifiSSID      String
+  wifiPassword  String
+  mqttBroker    String   @default("broker.hivemq.com")
+  mqttPort      Int      @default(1883)
+  sensorPins    String   // JSON string: {"ph":34,"tds":35,"temp":32}
+  pumpPins      String   // JSON string: {"circ":12,"phUp":13,"phDown":14,"nuteA":27,"nuteB":26}
+  cameraUrl     String   @default("")
+  updatedAt     DateTime @updatedAt
+}
+
+model SensorData {
+  id          String   @id @default(cuid())
+  timestamp   DateTime @default(now())
+  ph          Float
+  tds         Int
+  waterTemp   Float
+  airTemp     Float
+  humidity    Float
+  flowRate    Float
+  waterLevel  String
+  orp         Float    @default(350.0)
+}
+
+model GrowthCycle {
+  id              String   @id @default(cuid())
+  phase           String   // SEEDLING, VEGETATIVE, FLOWERING
+  startDate       DateTime @default(now())
+  harvestDate     DateTime?
+  autopilotActive Boolean  @default(false)
+  parameters      String   // JSON string with phase targets
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model HealthCheck {
+  id          String   @id @default(cuid())
+  timestamp   DateTime @default(now())
+  imageUrl    String
+  analysis    String
+  healthScore Int
+  actions     String   // JSON array of recommended actions
+  severity    String   @default("normal") // normal, warning, critical
+}
+
+model SystemLog {
+  id        String   @id @default(cuid())
+  timestamp DateTime @default(now())
+  level     String   // INFO, WARNING, CRITICAL, AI_DECISION
+  message   String
+  source    String   @default("system") // system, autopilot, ai, user
+}
+
+model AutopilotAction {
+  id          String   @id @default(cuid())
+  timestamp   DateTime @default(now())
+  action      String   // pH_ADJUST, NUTRIENT_DOSE, etc.
+  parameters  String   // JSON with action details
+  success     Boolean  @default(true)
+  cycleId     String?
+}
