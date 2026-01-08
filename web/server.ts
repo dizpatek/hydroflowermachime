@@ -3,8 +3,8 @@ import express from 'express';
 import cors from 'cors';
 import { Server } from 'socket.io';
 import { createServer } from 'http';
-import { prisma } from './lib/db';
-import { generateToken, comparePassword } from './lib/auth';
+import { prisma } from './lib/db.js';
+import { generateToken, comparePassword } from './lib/auth.js';
 
 const app = express();
 const httpServer = createServer(app);
@@ -225,8 +225,7 @@ app.post('/api/health/analyze', async (req, res) => {
             return res.status(400).json({ error: 'Camera URL not configured' });
         }
 
-        // Import dynamically to avoid circular dependency issues if any
-        const { analyzeHealthFromCamera } = await import('./services/gemini');
+        const { analyzeHealthFromCamera } = await import('./services/gemini.js');
 
         console.log('Triggering manual health check...');
         const analysis = await analyzeHealthFromCamera(config.cameraUrl);
