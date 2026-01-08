@@ -102,45 +102,58 @@ HydroFlowerMachine/
 
 ## 🚀 Hızlı Başlangıç
 
-### 1️⃣ Web Uygulaması
+Sistemi kullanmaya başlamak için iki seçeneğiniz var: Donanımsız Test (Simülasyon) veya Gerçek Donanımlı Kurulum.
 
+### Seçenek 1: Simülasyon Modu (Donanımsız Test)
+Donanımınız henüz hazır değilse, sistemin tüm özelliklerini test etmek için bu modu kullanın.
+
+1. **Web Sunucusu Başlatma**:
+   ```bash
+   cd web
+   npm install
+   npm run seed  # Veritabanını oluşturur
+   npm run dev:all # Sunucuyu başlatır
+   ```
+
+2. **Firmware Simülasyonu**:
+   - `firmware/src/main.cpp` dosyasında en üstteki şu satırın yorumunu kaldırın:
+     ```cpp
+     #define SIMULATION_MODE
+     ```
+   - Bu modda ESP32, sensörlere ihtiyaç duymadan rastgele (gerçekçi) veriler üretir.
+
+3. **AI Simülasyonu**:
+   - Dashboard'a gidin (http://localhost:5173).
+   - **Ayarlar** sayfasına girin.
+   - **Kamera URL** alanına `SIMULATION` yazıp kaydedin.
+   - Artık Dashboard'da **"Analiz Et"** butonuna basarak yapay zeka sağlık kontrolünü test edebilirsiniz.
+
+---
+
+### Seçenek 2: Prodüksiyon Modu (Gerçek Donanım)
+
+#### 1️⃣ Web Uygulaması
 ```bash
 cd web
-
-# Bağımlılıkları yükle
 npm install
-
-# Veritabanını oluştur
-npx prisma migrate dev --name init
-
-# Varsayılan kullanıcıyı ekle (jack/duffy)
 npm run seed
-
-# Geliştirme modunda başlat (frontend + backend)
 npm run dev:all
 ```
-
 **Tarayıcıda aç:** http://localhost:5173
 
-### 2️⃣ ESP32-C3 Firmware
+#### 2️⃣ ESP32-C3 Firmware
+1. VS Code ile `firmware` klasörünü açın.
+2. PlatformIO eklentisinin yüklü olduğundan emin olun.
+3. `src/main.cpp` dosyasında `SIMULATION_MODE` satırını yorum satırı yapın (`//`).
+4. WiFi bilgilerinizi güncelleyin:
+   ```cpp
+   const char* ssid = "YOUR_WIFI_SSID";
+   const char* password = "YOUR_WIFI_PASSWORD";
+   ```
+5. USB ile ESP32'yi bağlayıp **Upload** butonuna basın.
 
-```bash
-cd firmware
-
-# WiFi bilgilerini güncelle (src/main.cpp)
-# const char* ssid = "YOUR_WIFI_SSID";
-# const char* password = "YOUR_WIFI_PASSWORD";
-
-# Firmware'i yükle
-pio run --target upload
-
-# Serial Monitor
-pio device monitor
-```
-
-### 3️⃣ Donanım Kurulumu
-
-Detaylı donanım bağlantıları için: **[HARDWARE.md](./HARDWARE.md)**
+#### 3️⃣ Donanım Kurulumu
+Detaylı kablolama şeması ve pin bağlantıları için: **[HARDWARE.md](./HARDWARE.md)** dosyasını inceleyin.
 
 ---
 
