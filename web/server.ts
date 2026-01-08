@@ -136,6 +136,17 @@ app.post('/api/autopilot/start', async (req, res) => {
                 }
             });
 
+            const params = JSON.parse(cycle.parameters as string);
+
+            // Send settings to ESP32
+            io.emit('esp32:command', {
+                settings: {
+                    autopilot: true,
+                    targetPH: (params.phMin + params.phMax) / 2,
+                    targetTDS: (params.tdsMin + params.tdsMax) / 2
+                }
+            });
+
             io.emit('autopilot:status', { active: true });
             res.json({ success: true, message: 'Autopilot activated' });
         } else {
@@ -170,6 +181,13 @@ app.post('/api/autopilot/stop', async (req, res) => {
                     level: 'WARNING',
                     message: 'Autopilot deactivated by user',
                     source: 'user'
+                }
+            });
+
+            // Send disable command to ESP32
+            io.emit('esp32:command', {
+                settings: {
+                    autopilot: false
                 }
             });
 
@@ -236,6 +254,20 @@ io.on('connection', (socket) => {
     socket.on('actuator:control', (command) => {
         // Forward actuator commands to ESP32
         io.emit('esp32:command', command);
+    });
+
+    socket.on('esp32:log', async (data) => {
+        try {
+            await prisma.systemLog.create({
+                data: {
+                    level: data.level || 'INFO',
+                    message: data.message,
+                    source: data.source || 'esp32'
+                }
+            });
+        } catch (error) {
+            console.error('Failed to save ESP32 log:', error);
+        }
     });
 
     socket.on('disconnect', () => {

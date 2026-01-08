@@ -74,6 +74,21 @@ struct SensorData {
   float orp;
 } currentData;
 
+// Function Prototypes
+void readAllSensors();
+float readPH();
+int readTDS();
+void printSensorData();
+void controlPump(int pin, bool state, int duration = 0);
+void controlFan(int speed);
+void checkLightSchedule();
+void sendSensorData();
+void sendLog(String message, String level);
+void handleWebSocketCommand(char* payload);
+void connectWiFi();
+void webSocketEvent(WStype_t type, uint8_t * payload, size_t length);
+void runAutopilot();
+
 // ═══════════════════════════════════════════════════════════════════
 // SETUP
 // ═══════════════════════════════════════════════════════════════════
@@ -132,6 +147,18 @@ void setup() {
   Serial.println("✅ WebSocket yapılandırıldı");
 }
 
+// ═══ AUTOPILOT CONFIGURATION ═══
+struct SystemConfig {
+  bool autopilotEnabled = false;
+  float targetPH = 6.0;
+  float phTolerance = 0.2;
+  int targetTDS = 1000;
+  int tdsTolerance = 100;
+  int dosingInterval = 900000; // 15 mins (safety delay between doses)
+} sysConfig;
+
+unsigned long lastDoseTime = 0;
+
 // ═══════════════════════════════════════════════════════════════════
 // MAIN LOOP
 // ═══════════════════════════════════════════════════════════════════
@@ -145,6 +172,11 @@ void loop() {
     lastSensorRead = now;
     readAllSensors();
     printSensorData();
+    
+    // Run Autopilot Logic if enabled
+    if (sysConfig.autopilotEnabled) {
+      runAutopilot();
+    }
   }
 
   // Send data to server periodically
@@ -155,6 +187,67 @@ void loop() {
 
   // Check light schedule (RTC-based)
   checkLightSchedule();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// AUTOPILOT LOGIC
+// ═══════════════════════════════════════════════════════════════════
+
+void runAutopilot() {
+  unsigned long now = millis();
+  
+  // Safety: Enforce waiting period after any dosing
+  if (now - lastDoseTime < sysConfig.dosingInterval) {
+    return;
+  }
+
+  // 1. pH Control
+  // Too Acidic (Low pH) -> Add pH Up (Base)
+  if (currentData.ph < (sysConfig.targetPH - sysConfig.phTolerance)) {
+    String msg = "AI: pH Low (" + String(currentData.ph) + ") - Dosing pH Up";
+    Serial.println(msg);
+    sendLog(msg, "AI_DECISION");
+    controlPump(PUMP_PH_UP, true, 2000); // 2 second dose
+    lastDoseTime = now;
+    return; // Dose one thing at a time
+  }
+  
+  // Too Alkaline (High pH) -> Add pH Down (Acid)
+  else if (currentData.ph > (sysConfig.targetPH + sysConfig.phTolerance)) {
+    String msg = "AI: pH High (" + String(currentData.ph) + ") - Dosing pH Down";
+    Serial.println(msg);
+    sendLog(msg, "AI_DECISION");
+    controlPump(PUMP_PH_DOWN, true, 2000); // 2 second dose
+    lastDoseTime = now;
+    return;
+  }
+
+  // 2. Nutrient (TDS) Control
+  // TDS too low -> Add Nutrients
+  // Note: We rarely remove nutrients automatically (requires water change)
+  if (currentData.tds < (sysConfig.targetTDS - sysConfig.tdsTolerance)) {
+    String msg = "AI: Nutrients Low (" + String(currentData.tds) + ") - Dosing Nutrients";
+    Serial.println(msg);
+    sendLog(msg, "AI_DECISION");
+    controlPump(PUMP_NUTRIENT, true, 3000); // 3 second dose
+    lastDoseTime = now;
+    return;
+  }
+  
+  // 3. Environment Control
+  // Humidity too low -> Toggle Humidifier
+  if (currentData.humidity < 50.0) {
+    digitalWrite(HUMIDIFIER_PIN, HIGH);
+  } else if (currentData.humidity > 70.0) {
+    digitalWrite(HUMIDIFIER_PIN, LOW);
+  }
+  
+  // Temperature too high -> Turn on Fan
+  if (currentData.airTemp > 26.0) {
+    controlFan(255); // Max speed
+  } else if (currentData.airTemp < 24.0) {
+    controlFan(0); // Stop fan
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -297,6 +390,20 @@ void sendSensorData() {
   webSocket.sendTXT("42[\"esp32:data\"," + jsonString + "]");
 }
 
+void sendLog(String message, String level) {
+  if (!webSocket.isConnected()) return;
+
+  StaticJsonDocument<256> doc;
+  doc["message"] = message;
+  doc["level"] = level;
+  doc["source"] = "esp32";
+
+  String jsonString;
+  serializeJson(doc, jsonString);
+  
+  webSocket.sendTXT("42[\"esp32:log\"," + jsonString + "]");
+}
+
 void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
   switch(type) {
     case WStype_DISCONNECTED:
@@ -315,11 +422,23 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
 }
 
 void handleWebSocketCommand(char* payload) {
-  StaticJsonDocument<256> doc;
+  StaticJsonDocument<512> doc;
   DeserializationError error = deserializeJson(doc, payload);
   
   if (error) return;
 
+  // Handle Settings Update
+  if (doc.containsKey("settings")) {
+    JsonObject settings = doc["settings"];
+    sysConfig.autopilotEnabled = settings["autopilot"];
+    sysConfig.targetPH = settings["targetPH"] | 6.0;
+    sysConfig.targetTDS = settings["targetTDS"] | 1000;
+    
+    Serial.println("⚙️ Ayarlar güncellendi!");
+    return;
+  }
+
+  // Handle Manual Actuator Control
   String pump = doc["pump"];
   bool state = doc["state"];
   int duration = doc["duration"] | 0;
