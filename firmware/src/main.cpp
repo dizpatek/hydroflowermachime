@@ -15,13 +15,8 @@
  * ═══════════════════════════════════════════════════════════════════
  */
 
-// ═══ WIFI CONFIGURATION ═══
-const char* ssid = "YOUR_WIFI_SSID";
-const char* password = "YOUR_WIFI_PASSWORD";
-const char* websocket_server = "192.168.1.100"; // Your server IP
-const uint16_t websocket_port = 3001;
-
-// ═══ PIN DEFINITIONS (ESP32-C3) ═══
+// ═══ CONFIGURATION ═══
+// #define SIMULATION_MODE  // Uncomment this line to test without hardware
 // Sensors
 #define TDS_PIN 2          // ADC for TDS sensor
 #define PH_PIN 3           // ADC for pH sensor
@@ -102,7 +97,8 @@ void setup() {
   // Initialize I2C for RTC
   Wire.begin(SDA_PIN, SCL_PIN);
   
-  // Initialize RTC
+#ifndef SIMULATION_MODE
+  // Initialize Real Sensors
   if (!rtc.begin()) {
     Serial.println("❌ RTC bulunamadı!");
   } else {
@@ -113,10 +109,12 @@ void setup() {
     }
   }
 
-  // Initialize sensors
   ds18b20.begin();
   dht.begin();
   Serial.println("✅ Sensörler başlatıldı");
+#else
+  Serial.println("⚠️  SİMÜLASYON MODU AKTİF - Sensörler devre dışı");
+#endif
 
   // Initialize actuator pins
   pinMode(PUMP_MAIN, OUTPUT);
@@ -255,6 +253,19 @@ void runAutopilot() {
 // ═══════════════════════════════════════════════════════════════════
 
 void readAllSensors() {
+#ifdef SIMULATION_MODE
+  // Generate random realistic data
+  currentData.ph = 5.8 + ((random(0, 100) / 100.0) * 0.8); // 5.8 - 6.6
+  currentData.tds = 900 + random(-50, 50);
+  currentData.waterTemp = 20.0 + ((random(0, 100) / 100.0) * 2.0);
+  currentData.airTemp = 24.0 + ((random(0, 100) / 100.0) * 2.0);
+  currentData.humidity = 55.0 + random(-5, 5);
+  currentData.flowRate = 3.5;
+  currentData.waterLevel = "OK";
+  currentData.orp = 350.0 + random(-10, 10);
+  return;
+#endif
+
   // Read pH
   currentData.ph = readPH();
 
