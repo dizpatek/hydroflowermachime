@@ -17,6 +17,13 @@
 
 // ═══ CONFIGURATION ═══
 // #define SIMULATION_MODE  // Uncomment this line to test without hardware
+
+// ═══ WIFI CONFIGURATION ═══
+const char* ssid = "Murphy";
+const char* password = "sifreyok";
+const char* websocket_server = "192.168.1.33"; // Auto-detected PC IP
+const uint16_t websocket_port = 3001;
+
 // Sensors
 #define TDS_PIN 2          // ADC for TDS sensor
 #define PH_PIN 3           // ADC for pH sensor
