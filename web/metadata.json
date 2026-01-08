@@ -1,0 +1,7 @@
+{
+  "name": "HydroAI Control",
+  "description": "Autonomous Hydroponic System Control Dashboard with AI Integration",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
