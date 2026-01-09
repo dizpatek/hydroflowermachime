@@ -7,6 +7,7 @@ import Control from './pages/Control';
 import GrowthPhasePage from './pages/GrowthPhase';
 import Reports from './pages/Reports';
 import Backup from './pages/Backup';
+import GlobalDebugger from './components/GlobalDebugger';
 
 // Protected Route Component
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -26,6 +27,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <BrowserRouter>
+      <GlobalDebugger />
       <Routes>
         <Route path="/" element={<Login />} />
         <Route
