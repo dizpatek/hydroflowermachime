@@ -17,6 +17,7 @@ import { API_BASE_URL } from '../services/config';
 const API_URL = `${API_BASE_URL}/api`;
 
 export default function Dashboard() {
+    console.log('Dashboard component rendering...');
     const navigate = useNavigate();
     const [sensorData, setSensorData] = useState<any[]>([]);
     const [currentData, setCurrentData] = useState<any>(null);
@@ -211,10 +212,10 @@ export default function Dashboard() {
 
                     {/* Sensor Metrics */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <MetricCard label="pH" value={currentData.ph.toFixed(2)} icon={FlaskConical} color="emerald" />
-                        <MetricCard label="TDS" value={currentData.tds.toFixed(0)} unit="ppm" icon={Zap} color="blue" />
-                        <MetricCard label="Su Sıcaklığı" value={currentData.waterTemp.toFixed(1)} unit="°C" icon={Thermometer} color="cyan" />
-                        <MetricCard label="Nem" value={currentData.humidity.toFixed(0)} unit="%" icon={Droplets} color="indigo" />
+                        <MetricCard label="pH" value={(currentData?.ph ?? 0).toFixed(2)} icon={FlaskConical} color="emerald" />
+                        <MetricCard label="TDS" value={(currentData?.tds ?? 0).toFixed(0)} unit="ppm" icon={Zap} color="blue" />
+                        <MetricCard label="Su Sıcaklığı" value={(currentData?.waterTemp ?? 0).toFixed(1)} unit="°C" icon={Thermometer} color="cyan" />
+                        <MetricCard label="Nem" value={(currentData?.humidity ?? 0).toFixed(0)} unit="%" icon={Droplets} color="indigo" />
                     </div>
 
                     {/* Actuator Status Panel */}

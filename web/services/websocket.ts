@@ -1,5 +1,5 @@
 import { io, Socket } from 'socket.io-client';
-import { WS_URL } from './config.js';
+import { WS_URL } from './config';
 
 class WebSocketService {
     private socket: Socket | null = null;

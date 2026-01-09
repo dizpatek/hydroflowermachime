@@ -18,17 +18,23 @@ export default function Login() {
         setError('');
         setLoading(true);
 
+        console.log('Login attempt:', { username, apiUrl: `${API_BASE_URL}/api/auth/login` });
+
         try {
             const response = await axios.post(`${API_BASE_URL}/api/auth/login`, {
                 username,
                 password
             });
 
+            console.log('Login successful:', { token: response.data.token?.substring(0, 20), user: response.data.user });
+
             localStorage.setItem('token', response.data.token);
             localStorage.setItem('user', JSON.stringify(response.data.user));
 
+            console.log('Navigating to dashboard...');
             navigate('/dashboard');
         } catch (err: any) {
+            console.error('Login failed:', err);
             setError(err.response?.data?.error || 'Login failed');
         } finally {
             setLoading(false);
