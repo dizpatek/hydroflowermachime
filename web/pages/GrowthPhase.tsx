@@ -18,27 +18,64 @@ export default function GrowthPhasePage() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetchPhaseData();
+        let mounted = true;
+
+        const init = async () => {
+            await fetchPhaseData(mounted);
+        };
+
+        init();
+
+        return () => {
+            mounted = false;
+        };
     }, []);
 
-    const fetchPhaseData = async () => {
+    const fetchPhaseData = async (mounted: boolean = true) => {
         try {
-            const [currentRes, historyRes] = await Promise.all([
+            if (mounted) setLoading(true);
+
+            const results = await Promise.allSettled([
                 axios.get(`${API_BASE_URL}/api/cycle/current`),
-                axios.get(`${API_BASE_URL}/api/cycle/history`) // Backend endpoint needed
+                axios.get(`${API_BASE_URL}/api/cycle/history`)
             ]);
 
-            if (currentRes.data?.phase) {
-                setCurrentPhase(currentRes.data.phase);
-                setSelectedPhase(currentRes.data.phase);
+            if (!mounted) return;
+
+            // Handle Current
+            if (results[0].status === 'fulfilled') {
+                const data = results[0].value.data;
+                if (data && data.phase) {
+                    setCurrentPhase(data.phase);
+                    setSelectedPhase(data.phase);
+                } else {
+                    // Set Safe Default if no cycle or phase
+                    setCurrentPhase(GrowthPhase.VEGETATIVE);
+                    setSelectedPhase(GrowthPhase.VEGETATIVE);
+                }
+            } else {
+                console.warn('Could not fetch current phase, using default');
+                setCurrentPhase(GrowthPhase.VEGETATIVE);
+                setSelectedPhase(GrowthPhase.VEGETATIVE);
             }
-            if (historyRes.data) {
-                setHistory(historyRes.data);
+
+            // Handle History
+            if (results[1].status === 'fulfilled') {
+                setHistory(Array.isArray(results[1].value.data) ? results[1].value.data : []);
+            } else {
+                console.warn('Could not fetch phase history');
+                setHistory([]);
             }
+
         } catch (error) {
             console.error('Failed to fetch phase data', error);
+            if (mounted) {
+                // Ensure UI doesn't break even on catastrophe
+                setCurrentPhase(GrowthPhase.VEGETATIVE);
+                setSelectedPhase(GrowthPhase.VEGETATIVE);
+            }
         } finally {
-            setLoading(false);
+            if (mounted) setLoading(false);
         }
     };
 
@@ -61,7 +98,7 @@ export default function GrowthPhasePage() {
         { id: GrowthPhase.FLUSH, label: 'Flush (Yıkama)', icon: Droplets, color: 'text-blue-400' },
     ];
 
-    const currentParams = PHASE_PARAMETERS[selectedPhase];
+    const currentParams = PHASE_PARAMETERS[selectedPhase] || PHASE_PARAMETERS[GrowthPhase.VEGETATIVE];
 
     return (
         <div className="min-h-screen bg-[#0a0f18] text-slate-300">
