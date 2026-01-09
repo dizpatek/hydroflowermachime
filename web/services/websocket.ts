@@ -50,7 +50,7 @@ class WebSocketService {
         this.socket?.on('autopilot:status', callback);
     }
 
-    sendActuatorCommand(command: { pump: string; state: boolean; duration?: number }) {
+    sendActuatorCommand(command: { pump: string; state: boolean; duration?: number; speed?: number }) {
         this.socket?.emit('actuator:control', command);
     }
 

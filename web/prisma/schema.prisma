@@ -78,3 +78,43 @@ model AutopilotAction {
   success     Boolean  @default(true)
   cycleId     String?
 }
+
+model ActuatorStatus {
+  id          String   @id @default(cuid())
+  actuator    String   // "pump_main", "pump_ph_up", etc.
+  state       Boolean  // ON/OFF
+  lastChanged DateTime @default(now())
+  duration    Int?     // For pumps (milliseconds)
+  speed       Int?     // For fan (0-255)
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  type      String   // "critical", "warning", "info", "success"
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model GrowthPhaseHistory {
+  id        String   @id @default(cuid())
+  phase     String   // From GrowthPhase enum
+  startDate DateTime @default(now())
+  endDate   DateTime?
+  notes     String?
+}
+
+model Backup {
+  id        String   @id @default(cuid())
+  filename  String
+  size      Int      // bytes
+  createdAt DateTime @default(now())
+}
+
+model CalibrationLog {
+  id        String   @id @default(cuid())
+  sensor    String   // "ph", "tds"
+  values    String   // JSON: {"ph4": 3.0, "ph7": 2.5}
+  createdAt DateTime @default(now())
+}

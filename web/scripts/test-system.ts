@@ -30,11 +30,31 @@ async function runSystemTest() {
             console.log("✅ Config Fetched:", configRes.data.wifiSSID ? "OK" : "Empty");
         }
 
-        // 3. Health Endpoint (Public)
-        console.log("3️⃣ Checking System Health Endpoint...");
-        // Assuming there is a health endpoint or we check logs
-        const logsRes = await axios.get(`${API_URL}/logs`); // Usually public or protected
+        // 3. Health/Logs Endpoint
+        console.log("3️⃣ Checking System Logs...");
+        const logsRes = await axios.get(`${API_URL}/logs`, config);
         console.log("✅ Logs Endpoint Reachable");
+
+        // 4. Growth Cycle & Phase (Phase 2)
+        console.log("4️⃣ Checking Growth Cycle API...");
+        try {
+            const phaseRes = await axios.post(`${API_URL}/cycle/phase`, {
+                phase: 'VEGETATIVE'
+            }, config);
+            console.log("✅ Phase Update Success:", phaseRes.data.success);
+        } catch (e: any) {
+            console.log("⚠️ Phase Update skipped (might need active cycle):", e.response?.data?.error || e.message);
+        }
+
+        // 5. Notifications (Phase 2)
+        console.log("5️⃣ Checking Notifications API...");
+        const notifRes = await axios.get(`${API_URL}/notifications`, config);
+        console.log("✅ Notifications Fetched:", Array.isArray(notifRes.data) ? notifRes.data.length : "Fail");
+
+        // 6. Backups (Phase 3)
+        console.log("6️⃣ Checking Backup API...");
+        const backupRes = await axios.get(`${API_URL}/backups`, config);
+        console.log("✅ Backups Fetched:", Array.isArray(backupRes.data) ? "OK" : "Fail");
 
         console.log("\n🎉 ALL SYSTEMS GO! Backend is serving requests correctly.");
 

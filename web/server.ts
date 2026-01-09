@@ -5,6 +5,19 @@ import { Server } from 'socket.io';
 import { createServer } from 'http';
 import { prisma } from './lib/db.js';
 import { generateToken, comparePassword } from './lib/auth.js';
+import { PHASE_PARAMETERS } from './constants.js';
+import { GrowthPhase } from './types.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const BACKUP_DIR = path.join(__dirname, 'backups');
+
+if (!fs.existsSync(BACKUP_DIR)) {
+    fs.mkdirSync(BACKUP_DIR);
+}
 
 const app = express();
 const httpServer = createServer(app);
@@ -126,6 +139,97 @@ app.get('/api/cycle/current', async (req, res) => {
     }
 });
 
+app.post('/api/cycle/phase', async (req, res) => {
+    try {
+        const { phase } = req.body;
+
+        if (!Object.values(GrowthPhase).includes(phase)) {
+            return res.status(400).json({ error: 'Invalid phase' });
+        }
+
+        // Get current cycle
+        let cycle = await prisma.growthCycle.findFirst({
+            orderBy: { createdAt: 'desc' }
+        });
+
+        if (!cycle) {
+            // Create new cycle if none exists
+            cycle = await prisma.growthCycle.create({
+                data: {
+                    phase,
+                    parameters: JSON.stringify(PHASE_PARAMETERS[phase as GrowthPhase])
+                }
+            });
+        }
+
+        // Close previous history endpoint if exists
+        const lastHistory = await prisma.growthPhaseHistory.findFirst({
+            orderBy: { startDate: 'desc' }
+        });
+
+        if (lastHistory && !lastHistory.endDate) {
+            await prisma.growthPhaseHistory.update({
+                where: { id: lastHistory.id },
+                data: { endDate: new Date() }
+            });
+        }
+
+        // Create new history entry
+        await prisma.growthPhaseHistory.create({
+            data: {
+                phase,
+                startDate: new Date()
+            }
+        });
+
+        // Update cycle
+        const updatedCycle = await prisma.growthCycle.update({
+            where: { id: cycle.id },
+            data: {
+                phase,
+                parameters: JSON.stringify(PHASE_PARAMETERS[phase as GrowthPhase])
+            }
+        });
+
+        // Log system event
+        await prisma.systemLog.create({
+            data: {
+                level: 'INFO',
+                message: `Growth phase changed to ${phase}`,
+                source: 'user'
+            }
+        });
+
+        // If autopilot is active, update ESP32
+        if (cycle.autopilotActive) {
+            const params = PHASE_PARAMETERS[phase as GrowthPhase];
+            io.emit('esp32:command', {
+                settings: {
+                    autopilot: true,
+                    targetPH: (params.phMin + params.phMax) / 2,
+                    targetTDS: (params.tdsMin + params.tdsMax) / 2
+                }
+            });
+        }
+
+        res.json({ success: true, cycle: updatedCycle });
+    } catch (error) {
+        console.error('Failed to update phase:', error);
+        res.status(500).json({ error: 'Failed to update phase' });
+    }
+});
+
+app.get('/api/cycle/history', async (req, res) => {
+    try {
+        const history = await prisma.growthPhaseHistory.findMany({
+            orderBy: { startDate: 'desc' }
+        });
+        res.json(history);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to fetch history' });
+    }
+});
+
 app.post('/api/autopilot/start', async (req, res) => {
     try {
         const { password } = req.body;
@@ -211,9 +315,119 @@ app.post('/api/autopilot/stop', async (req, res) => {
 
             io.emit('autopilot:status', { active: false });
             res.json({ success: true, message: 'Autopilot deactivated' });
+        } else {
+            res.status(404).json({ error: 'No active growth cycle' });
         }
     } catch (error) {
         res.status(500).json({ error: 'Failed to stop autopilot' });
+    }
+});
+
+// ===== NOTIFICATIONS =====
+app.get('/api/notifications', async (req, res) => {
+    try {
+        const notifications = await prisma.notification.findMany({
+            orderBy: { createdAt: 'desc' },
+            take: 50
+        });
+        res.json(notifications);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to fetch notifications' });
+    }
+});
+
+app.put('/api/notifications/:id/read', async (req, res) => {
+    try {
+        const { id } = req.params;
+        await prisma.notification.update({
+            where: { id },
+            data: { read: true }
+        });
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to mark as read' });
+    }
+});
+
+app.delete('/api/notifications', async (req, res) => {
+    try {
+        await prisma.notification.deleteMany();
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to clear notifications' });
+    }
+});
+
+// ===== BACKUPS =====
+app.get('/api/backups', async (req, res) => {
+    try {
+        const backups = await prisma.backup.findMany({
+            orderBy: { createdAt: 'desc' }
+        });
+        res.json(backups);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to fetch backups' });
+    }
+});
+
+app.post('/api/backups', async (req, res) => {
+    try {
+        // Fetch all data
+        const data = {
+            users: await prisma.user.findMany(),
+            config: await prisma.eSP32Config.findMany(),
+            sensors: await prisma.sensorData.findMany(),
+            cycles: await prisma.growthCycle.findMany(),
+            history: await prisma.growthPhaseHistory.findMany(),
+            logs: await prisma.systemLog.findMany(),
+            notifications: await prisma.notification.findMany(),
+            timestamp: new Date().toISOString()
+        };
+
+        const filename = `backup-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+        const filepath = path.join(BACKUP_DIR, filename);
+        const jsonContent = JSON.stringify(data, null, 2);
+
+        fs.writeFileSync(filepath, jsonContent);
+
+        const backup = await prisma.backup.create({
+            data: {
+                filename,
+                size: Buffer.byteLength(jsonContent)
+            }
+        });
+
+        res.json(backup);
+    } catch (error) {
+        console.error('Backup failed:', error);
+        res.status(500).json({ error: 'Backup creation failed' });
+    }
+});
+
+app.get('/api/backups/:filename/download', (req, res) => {
+    const filepath = path.join(BACKUP_DIR, req.params.filename);
+    if (fs.existsSync(filepath)) {
+        res.download(filepath);
+    } else {
+        res.status(404).json({ error: 'File not found' });
+    }
+});
+
+app.delete('/api/backups/:id', async (req, res) => {
+    try {
+        const backup = await prisma.backup.findUnique({ where: { id: req.params.id } });
+        if (backup) {
+            const filepath = path.join(BACKUP_DIR, backup.filename);
+            if (fs.existsSync(filepath)) {
+                fs.unlinkSync(filepath);
+            }
+            await prisma.backup.delete({ where: { id: req.params.id } });
+            res.json({ success: true });
+        } else {
+            res.status(404).json({ error: 'Backup not found' });
+        }
+    } catch (error) {
+        res.status(500).json({ error: 'Delete failed' });
     }
 });
 

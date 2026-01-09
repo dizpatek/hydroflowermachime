@@ -4,11 +4,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     Activity, Thermometer, Droplets, Zap, Cpu, FlaskConical, Waves,
     Gauge, Settings, Power, Eye, PlayCircle, PauseCircle, LogOut,
-    Camera, TrendingUp, AlertTriangle, CheckCircle, Lock, X
+    Camera, TrendingUp, AlertTriangle, CheckCircle, Lock, X, Sliders,
+    Sprout, BarChart
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { wsService } from '../services/websocket';
 import axios from 'axios';
+import { ActuatorPanel } from '../components/ActuatorPanel';
+import { NotificationCenter } from '../components/NotificationCenter';
 
 import { API_BASE_URL } from '../services/config';
 const API_URL = `${API_BASE_URL}/api`;
@@ -158,9 +161,35 @@ export default function Dashboard() {
                             {autopilotActive ? 'OTOPİLOT AKTİF' : 'OTOPİLOT BAŞLAT'}
                         </motion.button>
 
+                        <NotificationCenter />
+                        <button
+                            onClick={() => navigate('/control')}
+                            className="p-3 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 text-white transition-colors flex items-center gap-2"
+                            title="Manuel Kontrol"
+                        >
+                            <Sliders className="w-5 h-5" />
+                            <span className="hidden md:inline">Kontrol</span>
+                        </button>
+                        <button
+                            onClick={() => navigate('/reports')}
+                            className="p-3 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 text-white transition-colors flex items-center gap-2"
+                            title="Raporlar"
+                        >
+                            <BarChart className="w-5 h-5" />
+                            <span className="hidden md:inline">Raporlar</span>
+                        </button>
+                        <button
+                            onClick={() => navigate('/growth-phase')}
+                            className="p-3 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 text-white transition-colors flex items-center gap-2"
+                            title="Büyüme Fazı"
+                        >
+                            <Sprout className="w-5 h-5" />
+                            <span className="hidden md:inline">Fazlar</span>
+                        </button>
                         <button
                             onClick={() => navigate('/settings')}
-                            className="p-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-colors"
+                            className="p-3 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 text-white transition-colors"
+                            title="Ayarlar"
                         >
                             <Settings className="w-5 h-5" />
                         </button>
@@ -187,6 +216,9 @@ export default function Dashboard() {
                         <MetricCard label="Su Sıcaklığı" value={currentData.waterTemp.toFixed(1)} unit="°C" icon={Thermometer} color="cyan" />
                         <MetricCard label="Nem" value={currentData.humidity.toFixed(0)} unit="%" icon={Droplets} color="indigo" />
                     </div>
+
+                    {/* Actuator Status Panel */}
+                    <ActuatorPanel />
 
                     {/* Charts */}
                     <div className="bg-white/5 border border-white/10 rounded-3xl p-6 backdrop-blur-sm">
