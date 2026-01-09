@@ -292,41 +292,54 @@ export default function Settings() {
 
                     {/* Admin Tab */}
                     {activeTab === 'admin' && (
-                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+
+                            {/* Password Change Section */}
                             <div className="bg-white/5 border border-white/10 rounded-3xl p-6">
                                 <div className="flex items-center gap-2 mb-6">
-                                    <Shield className="w-5 h-5 text-indigo-400" />
-                                    <h3 className="font-bold text-white">Yönetim Araçları</h3>
+                                    <Shield className="w-5 h-5 text-emerald-400" />
+                                    <h3 className="font-bold text-white">Yönetici Şifresini Değiştir</h3>
                                 </div>
-                                <div className="space-y-3">
-                                    <button
-                                        onClick={() => navigate('/backup')}
-                                        className="w-full bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/20 rounded-xl p-4 text-left transition-colors flex items-center justify-between group"
-                                    >
-                                        <div>
-                                            <div className="font-bold">Yedekleme Merkezi</div>
-                                            <div className="text-xs opacity-70 mt-1">Veritabanı yedekle/geri yükle</div>
-                                        </div>
-                                        <ArrowLeft className="w-4 h-4 rotate-180 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                    </button>
 
-                                    <button className="w-full bg-slate-500/10 hover:bg-slate-500/20 text-slate-300 border border-slate-500/20 rounded-xl p-4 text-left transition-colors">
-                                        <div className="font-bold">Sistem Logları</div>
-                                        <div className="text-xs opacity-70 mt-1">Hata ve işlem kayıtları</div>
-                                    </button>
-                                </div>
+                                <PasswordChangeForm />
                             </div>
 
-                            <div className="bg-red-500/5 border border-red-500/10 rounded-3xl p-6">
-                                <div className="flex items-center gap-2 mb-6">
-                                    <AlertTriangle className="w-5 h-5 text-red-500" />
-                                    <h3 className="font-bold text-red-500">Tehlikeli Bölge</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="bg-white/5 border border-white/10 rounded-3xl p-6">
+                                    <div className="flex items-center gap-2 mb-6">
+                                        <Server className="w-5 h-5 text-indigo-400" />
+                                        <h3 className="font-bold text-white">Yönetim Araçları</h3>
+                                    </div>
+                                    <div className="space-y-3">
+                                        <button
+                                            onClick={() => navigate('/backup')}
+                                            className="w-full bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/20 rounded-xl p-4 text-left transition-colors flex items-center justify-between group"
+                                        >
+                                            <div>
+                                                <div className="font-bold">Yedekleme Merkezi</div>
+                                                <div className="text-xs opacity-70 mt-1">Veritabanı yedekle/geri yükle</div>
+                                            </div>
+                                            <ArrowLeft className="w-4 h-4 rotate-180 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                        </button>
+
+                                        <button className="w-full bg-slate-500/10 hover:bg-slate-500/20 text-slate-300 border border-slate-500/20 rounded-xl p-4 text-left transition-colors">
+                                            <div className="font-bold">Sistem Logları</div>
+                                            <div className="text-xs opacity-70 mt-1">Hata ve işlem kayıtları</div>
+                                        </button>
+                                    </div>
                                 </div>
-                                <div className="space-y-3">
-                                    <button className="w-full bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl p-4 text-left transition-colors">
-                                        <div className="font-bold">Fabrika Ayarlarına Dön</div>
-                                        <div className="text-xs opacity-70 mt-1">Tüm ayarları ve verileri sil</div>
-                                    </button>
+
+                                <div className="bg-red-500/5 border border-red-500/10 rounded-3xl p-6">
+                                    <div className="flex items-center gap-2 mb-6">
+                                        <AlertTriangle className="w-5 h-5 text-red-500" />
+                                        <h3 className="font-bold text-red-500">Tehlikeli Bölge</h3>
+                                    </div>
+                                    <div className="space-y-3">
+                                        <button className="w-full bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl p-4 text-left transition-colors">
+                                            <div className="font-bold">Fabrika Ayarlarına Dön</div>
+                                            <div className="text-xs opacity-70 mt-1">Tüm ayarları ve verileri sil</div>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </motion.div>
@@ -348,5 +361,105 @@ export default function Settings() {
                 </div>
             </div>
         </div>
+    );
+}
+
+// Password Change Form Component
+function PasswordChangeForm() {
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [status, setStatus] = useState<{ type: 'success' | 'error' | null, message: string }>({ type: null, message: '' });
+    const [loading, setLoading] = useState(false);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        if (newPassword !== confirmPassword) {
+            setStatus({ type: 'error', message: 'Yeni şifreler eşleşmiyor!' });
+            return;
+        }
+
+        if (newPassword.length < 6) {
+            setStatus({ type: 'error', message: 'Şifre en az 6 karakter olmalıdır.' });
+            return;
+        }
+
+        setLoading(true);
+        setStatus({ type: null, message: '' });
+
+        try {
+            const userStr = localStorage.getItem('user');
+            const user = userStr ? JSON.parse(userStr) : null;
+
+            if (!user) {
+                setStatus({ type: 'error', message: 'Oturum hatası. Lütfen tekrar giriş yapın.' });
+                return;
+            }
+
+            await axios.post(`${API_URL}/auth/change-password`, {
+                username: user.username,
+                currentPassword,
+                newPassword
+            });
+
+            setStatus({ type: 'success', message: 'Şifre başarıyla güncellendi!' });
+            setCurrentPassword('');
+            setNewPassword('');
+            setConfirmPassword('');
+        } catch (error: any) {
+            setStatus({ type: 'error', message: error.response?.data?.error || 'Şifre değiştirilemedi.' });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <form onSubmit={handleSubmit} className="space-y-4 max-w-md">
+            <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">Mevcut Şifre</label>
+                <input
+                    type="password"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                    required
+                />
+            </div>
+            <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">Yeni Şifre</label>
+                <input
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                    required
+                />
+            </div>
+            <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">Yeni Şifre (Tekrar)</label>
+                <input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                    required
+                />
+            </div>
+
+            {status.message && (
+                <div className={`p-3 rounded-lg text-sm ${status.type === 'success' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
+                    {status.message}
+                </div>
+            )}
+
+            <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-emerald-500 hover:bg-emerald-600 text-black font-bold py-3 rounded-xl transition-colors disabled:opacity-50"
+            >
+                {loading ? 'Güncelleniyor...' : 'Şifreyi Güncelle'}
+            </button>
+        </form>
     );
 }
