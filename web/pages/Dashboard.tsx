@@ -31,39 +31,73 @@ export default function Dashboard() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Connect WebSocket
-        wsService.connect();
+        let mounted = true;
 
-        wsService.onSensorUpdate((data) => {
-            setCurrentData(data);
-            setSensorData(prev => [...prev, data].slice(-50));
-        });
+        const init = async () => {
+            // Only attempt WebSocket if not on Vercel or if configured
+            // Vercel serverless doesn't support WS, so we might want to skip it or handle failure gracefully
+            try {
+                wsService.connect();
 
-        wsService.onAutopilotStatus((status) => {
-            setAutopilotActive(status.active);
-        });
+                wsService.onSensorUpdate((data) => {
+                    if (!mounted) return;
+                    console.log('WS: Sensor update received');
+                    setCurrentData(data);
+                    setSensorData(prev => [...prev, data].slice(-50));
+                });
 
-        // Load initial data
-        loadData();
+                wsService.onAutopilotStatus((status) => {
+                    if (!mounted) return;
+                    setAutopilotActive(status.active);
+                });
+            } catch (e) {
+                console.warn('WebSocket connection failed (expected on Vercel):', e);
+            }
 
-        return () => wsService.disconnect();
+            // Load initial data
+            await loadData(mounted);
+        };
+
+        init();
+
+        return () => {
+            mounted = false;
+            wsService.disconnect();
+        };
     }, []);
 
-    const loadData = async () => {
+    const loadData = async (mounted: boolean = true) => {
         try {
-            setLoading(true);
-            const [historyRes, cycleRes, healthRes, logsRes] = await Promise.all([
+            if (mounted) setLoading(true);
+
+            // Use Promise.allSettled to prevent one failure from breaking everything
+            const results = await Promise.allSettled([
                 axios.get(`${API_URL}/sensors/history?limit=50`),
                 axios.get(`${API_URL}/cycle/current`),
                 axios.get(`${API_URL}/health/latest`),
                 axios.get(`${API_URL}/logs?limit=20`)
             ]);
 
-            setSensorData(historyRes.data || []);
-            if (historyRes.data && historyRes.data.length > 0) {
-                setCurrentData(historyRes.data[historyRes.data.length - 1]);
+            if (!mounted) return;
+
+            // Handle History
+            if (results[0].status === 'fulfilled') {
+                const historyData = results[0].value.data;
+                setSensorData(Array.isArray(historyData) ? historyData : []);
+                if (Array.isArray(historyData) && historyData.length > 0) {
+                    setCurrentData(historyData[historyData.length - 1]);
+                } else {
+                    setCurrentData({
+                        ph: 7.0,
+                        tds: 0,
+                        waterTemp: 22.0,
+                        humidity: 50.0,
+                        timestamp: new Date().toISOString()
+                    });
+                }
             } else {
-                // Set default data if no history exists
+                console.error('Failed to fetch history:', results[0].reason);
+                // Set SAFE default data if fetch fails
                 setCurrentData({
                     ph: 7.0,
                     tds: 0,
@@ -72,21 +106,26 @@ export default function Dashboard() {
                     timestamp: new Date().toISOString()
                 });
             }
-            setAutopilotActive(cycleRes.data?.autopilotActive || false);
-            setHealthCheck(healthRes.data);
-            setLogs(logsRes.data || []);
+
+            // Handle Cycle
+            if (results[1].status === 'fulfilled') {
+                setAutopilotActive(results[1].value.data?.autopilotActive || false);
+            }
+
+            // Handle Health
+            if (results[2].status === 'fulfilled') {
+                setHealthCheck(results[2].value.data);
+            }
+
+            // Handle Logs
+            if (results[3].status === 'fulfilled') {
+                setLogs(Array.isArray(results[3].value.data) ? results[3].value.data : []);
+            }
+
         } catch (error) {
-            console.error('Failed to load data:', error);
-            // Even on error, set default data to show the UI
-            setCurrentData({
-                ph: 0,
-                tds: 0,
-                waterTemp: 0,
-                humidity: 0,
-                timestamp: new Date().toISOString()
-            });
+            console.error('CRITICAL: Complete data load failure:', error);
         } finally {
-            setLoading(false);
+            if (mounted) setLoading(false);
         }
     };
 
