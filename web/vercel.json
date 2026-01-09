@@ -7,10 +7,5 @@
             "source": "/(.*)",
             "destination": "/"
         }
-    ],
-    "functions": {
-        "api/**/*.ts": {
-            "runtime": "@vercel/node@3"
-        }
-    }
+    ]
 }
